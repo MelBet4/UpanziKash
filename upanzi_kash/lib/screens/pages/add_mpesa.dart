@@ -75,7 +75,7 @@ class _AddMpesaPageState extends State<AddMpesaPage> {
       });
       final user = FirebaseAuth.instance.currentUser;
       bool writeComplete = false;
-      Future writeFuture = Future.delayed(const Duration(seconds: 5));
+      Future writeFuture = Future.delayed(const Duration(seconds: 2));
       if (user != null) {
         final transaction = {
           'id': DateTime.now().millisecondsSinceEpoch.toString(),
@@ -97,13 +97,30 @@ class _AddMpesaPageState extends State<AddMpesaPage> {
       }
       await Future.any([
         writeFuture,
-        Future.delayed(const Duration(seconds: 5)),
+        Future.delayed(const Duration(seconds: 2)),
       ]);
       setState(() {
         _isProcessing = false;
       });
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Theme.of(context).colorScheme.secondary, size: 32),
+                const SizedBox(width: 16),
+                Expanded(child: Text(_language == 'sw' ? 'Imefanikiwa!' : 'Success!')),
+              ],
+            ),
+          ),
+        );
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          Navigator.of(context).pop(); // Remove dialog
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       }
     }
   }
@@ -258,142 +275,88 @@ class _AddMpesaPageState extends State<AddMpesaPage> {
   }
 
   Widget _buildDetailsForm(ThemeData theme) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Card(
-          elevation: 8,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _amountFormKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.edit, color: theme.colorScheme.secondary, size: 32),
-                      const SizedBox(width: 12),
-                      Text(
-                        _language == 'sw' ? 'Weka maelezo' : 'Enter details',
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ],
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Form(
+            key: _amountFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _language == 'sw' ? 'Maelezo ya M-Pesa' : 'M-Pesa Details',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: _language == 'sw' ? 'Kiasi (KES)' : 'Amount (KES)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    prefixIcon: const Icon(Icons.attach_money),
                   ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: _language == 'sw' ? 'Kiasi' : 'Amount',
-                      labelStyle: theme.textTheme.bodyMedium,
-                      filled: true,
-                      fillColor: theme.colorScheme.surface,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.colorScheme.primary),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.colorScheme.secondary),
-                        borderRadius: BorderRadius.circular(16),
+                  validator: (v) => v == null || v.isEmpty ? (_language == 'sw' ? 'Weka kiasi' : 'Enter amount') : null,
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: InputDecoration(
+                    labelText: _language == 'sw' ? 'Maelezo' : 'Description',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    prefixIcon: const Icon(Icons.note),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _dateController,
+                  readOnly: true,
+                  onTap: _selectDate,
+                  decoration: InputDecoration(
+                    labelText: _language == 'sw' ? 'Tarehe' : 'Date',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    prefixIcon: const Icon(Icons.calendar_today),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _isProcessing ? null : _submitAmount,
+                      icon: _isProcessing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check),
+                      label: Text(_language == 'sw' ? 'Maliza' : 'Finish'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.secondary,
+                        foregroundColor: theme.colorScheme.onSecondary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                        textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        elevation: 6,
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return _language == 'sw' ? 'Tafadhali weka kiasi' : 'Please enter amount';
-                      }
-                      if (double.tryParse(value) == null) {
-                        return _language == 'sw' ? 'Kiasi si sahihi' : 'Invalid amount';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _descriptionController,
-                    decoration: InputDecoration(
-                      labelText: _language == 'sw' ? 'Maelezo' : 'Description',
-                      labelStyle: theme.textTheme.bodyMedium,
-                      filled: true,
-                      fillColor: theme.colorScheme.surface,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.colorScheme.primary),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.colorScheme.secondary),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _dateController,
-                    readOnly: true,
-                    onTap: _selectDate,
-                    decoration: InputDecoration(
-                      labelText: _language == 'sw' ? 'Tarehe' : 'Date',
-                      labelStyle: theme.textTheme.bodyMedium,
-                      filled: true,
-                      fillColor: theme.colorScheme.surface,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.colorScheme.primary),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: theme.colorScheme.secondary),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      suffixIcon: Icon(Icons.calendar_today, color: theme.colorScheme.secondary),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _goToPreviousPage,
-                        icon: const Icon(Icons.arrow_back),
-                        label: Text(_language == 'sw' ? 'Rudi' : 'Back'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.primary,
-                          side: BorderSide(color: theme.colorScheme.primary, width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                          textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: _isProcessing ? null : _submitAmount,
-                        icon: _isProcessing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.check),
-                        label: Text(_language == 'sw' ? 'Maliza' : 'Finish'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.secondary,
-                          foregroundColor: theme.colorScheme.onSecondary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                          textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          elevation: 6,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
-      ),
+        if (_isProcessing)
+          Container(
+            color: Colors.black.withOpacity(0.3),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+      ],
     );
   }
 

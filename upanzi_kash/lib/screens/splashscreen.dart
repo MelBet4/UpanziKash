@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:upanzi_kash/screens/home_page.dart';
 
 class Splashscreen extends StatefulWidget {
-  const Splashscreen({super.key});
+  final VoidCallback? onContinue;
+  const Splashscreen({super.key, this.onContinue});
 
   @override
   _SplashscreenState createState() => _SplashscreenState();
@@ -21,7 +22,7 @@ class _SplashscreenState extends State<Splashscreen> {
             const SizedBox(height: 24),
             _middleScreenText(),
             const SizedBox(height: 32),
-            _splashButton(context),
+            _splashButton(context, onContinue: widget.onContinue),
           ],
         ),
       ),
@@ -76,7 +77,7 @@ Widget _middleScreenText() {
   );
 }
 
-Widget _splashButton(BuildContext context) {
+Widget _splashButton(BuildContext context, {VoidCallback? onContinue}) {
   return ElevatedButton(
     style: ElevatedButton.styleFrom(
       backgroundColor: const Color(0xFFFF8F00),
@@ -93,7 +94,7 @@ Widget _splashButton(BuildContext context) {
       );
       await Future.delayed(const Duration(seconds: 2));
       Navigator.of(context).pop(); // Remove loading
-      Navigator.of(context).pushReplacementNamed('/'); // Go to app root
+      if (onContinue != null) onContinue();
     },
     child: const Text(
       "Karibu / Welcome",
