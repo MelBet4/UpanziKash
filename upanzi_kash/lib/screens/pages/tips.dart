@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:upanzi_kash/classes/farming_tip.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class TipsPage extends StatefulWidget {
   const TipsPage({super.key});
@@ -16,6 +18,12 @@ class _TipsPageState extends State<TipsPage> {
   String? _error;
   String _selectedCategory = 'all';
   String _language = 'en';
+  bool _generating = false;
+  String? _generateError;
+  String? _generateSuccess;
+
+  // Set your admin email here. Only this user will see the Generate AI Tip button.
+  final String _adminEmail = 'chebetmelanie4@gmail.com'; 
 
   final List<String> _categories = [
     'all',
@@ -67,6 +75,7 @@ class _TipsPageState extends State<TipsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
@@ -90,13 +99,48 @@ class _TipsPageState extends State<TipsPage> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.error)))
-              : _dailyTip == null
-                  ? _emptyState(theme)
-                  : _tipCard(_dailyTip!, theme),
+      body: Column(
+        children: [
+          if (user != null && user.email == _adminEmail)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton.icon(
+                icon: _generating
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.auto_awesome),
+                label: Text(_generating ? 'Generating...' : 'Generate AI Tip'),
+                onPressed: _generating ? null : _generateTip,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  elevation: 4,
+                ),
+              ),
+            ),
+          if (_generateError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(_generateError!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
+            ),
+          if (_generateSuccess != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(_generateSuccess!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary)),
+            ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.error)))
+                    : _dailyTip == null
+                        ? _emptyState(theme)
+                        : _tipCard(_dailyTip!, theme),
+          ),
+        ],
+      ),
     );
   }
 
@@ -187,5 +231,42 @@ class _TipsPageState extends State<TipsPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _generateTip() async {
+    setState(() {
+      _generating = true;
+      _generateError = null;
+      _generateSuccess = null;
+    });
+    try {
+      // Set your deployed Vercel endpoint here
+      final response = await http.post(
+        Uri.parse('https://your-vercel-app.vercel.app/api/generateTip'), // TODO: Set your Vercel endpoint
+      );
+      if (response.statusCode == 200) {
+        final tipText = json.decode(response.body)['tip'];
+        await FirebaseFirestore.instance.collection('tips').add({
+          'tip': tipText,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        setState(() {
+          _generateSuccess = 'Tip generated and saved!';
+        });
+        await _fetchDailyTip();
+      } else {
+        setState(() {
+          _generateError = 'Failed to generate tip (status ${response.statusCode})';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _generateError = 'Error: $e';
+      });
+    } finally {
+      setState(() {
+        _generating = false;
+      });
+    }
   }
 } 
