@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "45548092281",
+    "project_id": "upanzikash-app",
+    "storage_bucket": "upanzikash-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45548092281:android:9ad55e3819fe0ad89f0da8",
+        "android_client_info": {
+          "package_name": "com.example.upanzi_kash"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkamPtv5gqVMivOJPZXDTz9BGwFVlH_2A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
