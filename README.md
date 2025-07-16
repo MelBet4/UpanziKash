@@ -4,6 +4,8 @@
 
 Built using Flutter, UpanziKash is optimized for rural conditions, low-end devices, and users with limited internet access.
 
+Live demo: https://upanzi-kash.vercel.app/
+
 ---
 
 ## Features
